@@ -309,9 +309,43 @@ void RmlManager::retireRenderer(const std::shared_ptr<RmlRenderer>& renderer)
 
 void RmlManager::tick()
 {
+    if (m_assetsReady) {
+        const bool ready = m_assetsReady();
+        if (ready != m_lastAssetsReady) {
+            m_lastAssetsReady = ready;
+            if (ready)
+                invalidateVirtualImages();
+        }
+    }
+
+    // sprites that were busy/unavailable get a few more chances (about once per second)
+    if (++m_ticks % 60 == 0)
+        retryPendingImages();
+
     for (auto* widget : std::vector(m_widgets)) {
         if (!widget->isDestroyed())
             widget->tick();
+    }
+}
+
+void RmlManager::invalidateVirtualImages()
+{
+    if (!m_initialized)
+        return;
+
+    std::scoped_lock lock(m_mutex);
+    // RmlUi reloads a released texture the next time an element renders it
+    for (const auto& source : m_virtualSources)
+        Rml::ReleaseTexture(source);
+    m_pendingImages.clear();
+}
+
+void RmlManager::retryPendingImages()
+{
+    std::scoped_lock lock(m_mutex);
+    for (auto& [source, attempts] : m_pendingImages) {
+        if (attempts > 0 && attempts <= 10)
+            Rml::ReleaseTexture(source);
     }
 }
 
@@ -320,19 +354,28 @@ ImagePtr RmlManager::loadImage(const std::string& source)
     // virtual images rendered from the game sprites
     static const std::regex virtualImage(R"((?:^|/)(item|effect|outfit)/(\d+(?:-\d+)*)\.png$)");
     std::smatch match;
-    if (std::regex_search(source, match, virtualImage)) {
-        if (!m_imageProvider)
-            return nullptr;
+    if (!std::regex_search(source, match, virtualImage))
+        return Image::load(source);
 
-        const auto args = stdext::split<int>(match[2].str(), "-");
+    std::scoped_lock lock(m_mutex);
+    m_virtualSources.insert(source);
 
+    ImagePtr image;
+    if (m_imageProvider && (!m_assetsReady || m_assetsReady())) {
         try {
-            return m_imageProvider(match[1].str(), args);
+            image = m_imageProvider(match[1].str(), stdext::split<int>(match[2].str(), "-"));
         } catch (const std::exception& e) {
             g_logger.error("[rmlui] image '{}' could not be drawn: {}", source, e.what());
-            return nullptr;
         }
     }
 
-    return Image::load(source);
+    if (image) {
+        m_pendingImages.erase(source);
+        return image;
+    }
+
+    // Not available yet (assets not loaded, sprite file busy): a transparent placeholder keeps
+    // the layout and avoids RmlUi's white box; the image is requested again later.
+    ++m_pendingImages[source];
+    return std::make_shared<Image>(Size(32, 32));
 }

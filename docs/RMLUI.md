@@ -99,7 +99,10 @@ A API DOM completa é a do [plugin Lua oficial do RmlUi](https://mikke89.github.
 - Imagens geradas das sprites do jogo (depois de `.dat/.spr` carregados):
   `item/<id>.png`, `effect/<id>.png`,
   `outfit/<looktype>-<head>-<body>-<legs>-<feet>-<addons>-<direção>.png` (direção 0=N, 1=L, 2=S, 3=O;
-  addons somam 1 e 2; cores pela paleta de outfits).
+  addons somam 1 e 2; cores pela paleta de outfits). Funciona com `.dat/.spr` clássico e com
+  assets protobuf (12.x+). Pedida antes de os assets carregarem, a imagem fica transparente e é
+  recarregada sozinha quando eles ficam prontos; sprites ocupadas são tentadas de novo. Dê
+  `width`/`height` ao `<img>` no RCSS para o tamanho não depender da imagem carregada.
 - Tema `efeitos`, ativo quando o backend completo existe:
   `@media (theme: efeitos) { .x { box-shadow: ...; decorator: linear-gradient(...); filter: blur(2dp); } }`.
 - Campos de texto (`<input type="text">`, `<textarea>`) seguram o teclado: digitar não dispara

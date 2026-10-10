@@ -28,6 +28,8 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
+#include <set>
+#include <unordered_map>
 
 class UIRmlWidget;
 class RmlRenderer;
@@ -69,6 +71,10 @@ public:
     std::vector<UIRmlWidgetPtr> getWidgets();
 
     void setImageProvider(ImageProvider provider) { m_imageProvider = std::move(provider); }
+    // Tells when the game assets (.dat/.spr or appearances) are usable; when it turns true, every
+    // virtual image is reloaded (an image requested before login would otherwise stay empty).
+    void setAssetsReadyCheck(std::function<bool()> check) { m_assetsReady = std::move(check); }
+    void invalidateVirtualImages();
     ImagePtr loadImage(const std::string& source);
 
     // RmlUi itself is not thread safe: every call into it goes through this lock.
@@ -84,6 +90,7 @@ public:
 private:
     void loadFonts();
     void tick();
+    void retryPendingImages();
 
     std::unique_ptr<Rml::SystemInterface> m_systemInterface;
     std::unique_ptr<Rml::FileInterface> m_fileInterface;
@@ -92,6 +99,11 @@ private:
     std::vector<UIRmlWidget*> m_widgets;
     std::vector<std::shared_ptr<RmlRenderer>> m_retiredRenderers;
     ImageProvider m_imageProvider;
+    std::function<bool()> m_assetsReady;
+    bool m_lastAssetsReady{ false };
+    std::set<std::string> m_virtualSources;            // every virtual image handed to RmlUi
+    std::unordered_map<std::string, int> m_pendingImages; // failed ones -> attempts so far
+    int m_ticks{ 0 };
     ScheduledEventPtr m_tickEvent;
 
     std::atomic_bool m_advancedEffects{ true }; // optimistic until the first frame reaches the GPU

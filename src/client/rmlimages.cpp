@@ -24,6 +24,7 @@
 
 #include "rmlimages.h"
 
+#include "game.h"
 #include "gameconfig.h"
 #include "outfit.h"
 #include "spritemanager.h"
@@ -35,6 +36,20 @@
 
 namespace
 {
+    // The sprite file is shared with the map drawing thread: when it is busy the call reports
+    // isLoading, so try again for a moment instead of giving up on the sprite.
+    ImagePtr spriteImage(const uint32_t spriteId)
+    {
+        for (int attempt = 0; attempt < 200; ++attempt) {
+            bool isLoading = false;
+            auto image = g_sprites.getSpriteImage(static_cast<int>(spriteId), isLoading);
+            if (!isLoading)
+                return image;
+            std::this_thread::yield();
+        }
+        throw std::runtime_error("sprite file busy");
+    }
+
     // Same layout as ThingType::getSpriteIndex (classic .dat/.spr assets).
     uint32_t spriteIndex(const ThingTypePtr& type, const int w, const int h, const int l, const int x, const int y, const int z, const int a)
     {
@@ -44,19 +59,41 @@ namespace
                 * type->getHeight() + h) * type->getWidth() + w;
     }
 
-    // Draws one layer of a thing (all its 32x32 tiles) into a new image.
+    // Protobuf assets (12.x+): one sprite per layer/pattern, already at the full thing size.
+    uint32_t protobufSpriteIndex(const ThingTypePtr& type, const int l, const int x, const int y, const int z, const int a)
+    {
+        const int phases = std::max<int>(1, type->getAnimationPhases());
+        return ((((a % phases) * type->getNumPatternZ() + z) * type->getNumPatternY() + y)
+                * type->getNumPatternX() + x) * type->getLayers() + l;
+    }
+
+    // Draws one layer of a thing (all its tiles) into a new image.
     ImagePtr drawLayer(const ThingTypePtr& type, const int layer, const int x, const int y, const int z)
     {
         const int spriteSize = g_gameConfig.getSpriteSize();
         const auto& sprites = type->getSprites();
         auto image = std::make_shared<Image>(Size(spriteSize * type->getWidth(), spriteSize * type->getHeight()));
 
+        if (g_game.isUsingProtobuf()) {
+            const auto index = protobufSpriteIndex(type, layer, x, y, z, 0);
+            if (index < sprites.size()) {
+                if (const auto sprite = spriteImage(sprites[index])) {
+                    const auto& size = sprite->getSize();
+                    if (size.width() > image->getWidth() || size.height() > image->getHeight())
+                        image = std::make_shared<Image>(Size(std::max(size.width(), image->getWidth()), std::max(size.height(), image->getHeight())));
+                    // anchored at the bottom-right corner, like ThingType texture building
+                    image->blit(Point(image->getWidth() - size.width(), image->getHeight() - size.height()), sprite);
+                }
+            }
+            return image;
+        }
+
         for (int w = 0; w < type->getWidth(); ++w) {
             for (int h = 0; h < type->getHeight(); ++h) {
                 const auto index = spriteIndex(type, w, h, layer, x, y, z, 0);
                 if (index >= sprites.size())
                     continue;
-                if (const auto sprite = g_sprites.getSpriteImage(sprites[index])) {
+                if (const auto sprite = spriteImage(sprites[index])) {
                     // tiles grow to the top-left, like ThingType drawing
                     image->blit(Point(spriteSize * (type->getWidth() - w - 1), spriteSize * (type->getHeight() - h - 1)), sprite);
                 }
@@ -151,8 +188,12 @@ namespace
 
 void registerRmlImageProvider()
 {
+    g_rml.setAssetsReadyCheck([] {
+        return g_things.isDatLoaded() && (g_game.isUsingProtobuf() || g_sprites.isLoaded());
+    });
+
     g_rml.setImageProvider([](const std::string_view kind, const std::vector<int>& args) -> ImagePtr {
-        if (!g_things.isDatLoaded() || args.empty())
+        if (args.empty())
             return nullptr;
 
         if (kind == "item")
