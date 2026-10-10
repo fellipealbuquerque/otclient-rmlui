@@ -20,6 +20,8 @@
   widget:setOn(true) / estilos           data-class-ativo="cond"
   UIItem / UICreature                    <img src="item/123.png"> / <img src="outfit/...">
   UIMinimap, UIMap e outros nativos      Rml.host(janela, 'idDoElemento', widgetOtui)
+                                         (o elemento só reserva o espaço; o widget fica por cima,
+                                          some com data-if e é recortado pela área rolável)
 
   Data model
   ----------
@@ -272,13 +274,20 @@ function Rml.on(window, id, eventName, callback)
     return element
 end
 
---- Retângulo de um elemento em coordenadas de tela (as mesmas do OTUI).
--- Útil para posicionar widgets OTUI, tooltips ou menus sobre o documento.
--- @return {x, y, width, height} ou nil se o elemento não existe/não está visível
-function Rml.elementRect(window, id)
-    local element = Rml.element(window, id)
-    if not element then return nil end
+local function isDisplayed(element)
+    -- data-if/data-visible não removem o elemento: aplicam display:none/visibility:hidden
+    local node = element
+    while node do
+        local style = node.style
+        if style.display == 'none' or style.visibility == 'hidden' then
+            return false
+        end
+        node = node.parent_node
+    end
+    return true
+end
 
+local function absoluteRect(window, element)
     local x, y = 0, 0
     local node = element
     while node do
@@ -292,49 +301,83 @@ function Rml.elementRect(window, id)
         y = y - (node.scroll_top or 0)
         node = node.parent_node
     end
-
-    local width, height = math.floor(element.offset_width + 0.5), math.floor(element.offset_height + 0.5)
-    if width <= 0 or height <= 0 then return nil end
     return {
         x = window:getX() + math.floor(x + 0.5),
         y = window:getY() + math.floor(y + 0.5),
-        width = width,
-        height = height,
+        width = math.floor(element.offset_width + 0.5),
+        height = math.floor(element.offset_height + 0.5),
     }
+end
+
+--- Retângulo de um elemento em coordenadas de tela (as mesmas do OTUI).
+-- Útil para posicionar widgets OTUI, tooltips ou menus sobre o documento.
+-- @return {x, y, width, height} ou nil se o elemento não existe ou não está visível
+function Rml.elementRect(window, id)
+    local element = Rml.element(window, id)
+    if not element or not isDisplayed(element) then return nil end
+    local rect = absoluteRect(window, element)
+    if rect.width <= 0 or rect.height <= 0 then return nil end
+    return rect
+end
+
+--- Área visível que recorta um elemento: o retângulo do ancestral rolável/recortado mais
+-- próximo (overflow diferente de visible), ou a janela inteira.
+function Rml.clipRect(window, id)
+    local element = Rml.element(window, id)
+    local node = element and element.parent_node
+    while node do
+        local style = node.style
+        local overflowX, overflowY = style['overflow-x'], style['overflow-y']
+        if (overflowX and overflowX ~= 'visible') or (overflowY and overflowY ~= 'visible') then
+            local rect = absoluteRect(window, node)
+            rect.width = math.floor(node.client_width + 0.5)
+            rect.height = math.floor(node.client_height + 0.5)
+            return rect
+        end
+        node = node.parent_node
+    end
+    return window:getRect()
 end
 
 -- Widgets OTUI dentro do documento --------------------------------------------------------
 
 --- Hospeda um widget OTUI nativo sobre um elemento do documento.
--- O widget passa a ser filho da janela RML e acompanha posição/tamanho do elemento a cada
--- layout; some quando o elemento some (data-if, outra aba). É assim que se usa minimapa,
--- mapa, UIItem/UICreature animados ou qualquer widget OTUI pronto dentro de uma tela RML.
+-- O widget acompanha posição/tamanho do elemento a cada layout, some quando o elemento
+-- some (data-if, outra aba) e é recortado pela área rolável que contém o elemento.
+-- É assim que se usa minimapa, mapa, UIItem/UICreature animados ou qualquer widget OTUI
+-- pronto dentro de uma tela RML.
 -- No RML basta reservar o espaço: <div id="minimap-slot" style="height: 160dp;"></div>
 -- @param window janela/painel RML
 -- @param elementId id do elemento que reserva o espaço
 -- @param widget widget OTUI já criado (ex.: g_ui.createWidget('Minimap'))
 -- @return o widget
 function Rml.host(window, elementId, widget)
-    widget:setParent(window)
+    -- painel invisível que recorta o widget na área rolável do documento
+    local clip = g_ui.createWidget('UIWidget', window)
+    clip:setPhantom(true)
+    clip:setClipping(true)
+    clip:setFocusable(false)
+    clip:setVisible(false)
+
+    widget:setParent(clip)
     widget:breakAnchors()
-    widget:setVisible(false)
 
     window.rmlHosted = window.rmlHosted or {}
-    window.rmlHosted[#window.rmlHosted + 1] = { id = elementId, widget = widget }
+    window.rmlHosted[#window.rmlHosted + 1] = { id = elementId, widget = widget, clip = clip }
 
     if not window.rmlHostConnected then
         window.rmlHostConnected = true
         connect(window, {
             onRmlLayout = function(self)
                 for _, hosted in ipairs(self.rmlHosted or {}) do
-                    local w = hosted.widget
-                    if not w:isDestroyed() then
+                    if not hosted.widget:isDestroyed() then
                         local rect = Rml.elementRect(self, hosted.id)
                         if rect then
-                            w:setRect(rect)
-                            w:setVisible(true)
+                            hosted.clip:setRect(Rml.clipRect(self, hosted.id))
+                            hosted.widget:setRect(rect)
+                            hosted.clip:setVisible(true)
                         else
-                            w:setVisible(false)
+                            hosted.clip:setVisible(false)
                         end
                     end
                 end
