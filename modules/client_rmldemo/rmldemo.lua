@@ -7,6 +7,30 @@ local function thingsLoaded()
     return g_things and g_things.isDatLoaded and g_things.isDatLoaded() or false
 end
 
+-- example ids: classic .dat/.spr (<= 10.x) and protobuf assets (12.x+) use different item ids
+local CLASSIC_ITEMS = { { id = 2148, name = 'gold coin' }, { id = 2152, name = 'platinum coin' },
+    { id = 2160, name = 'crystal coin' }, { id = 2400, name = 'magic sword' },
+    { id = 2472, name = 'magic plate armor' }, { id = 2195, name = 'boots of haste' } }
+local PROTOBUF_ITEMS = { { id = 3031, name = 'gold coin' }, { id = 3035, name = 'platinum coin' },
+    { id = 3043, name = 'crystal coin' }, { id = 3288, name = 'magic sword' },
+    { id = 3366, name = 'magic plate armor' }, { id = 3079, name = 'boots of haste' } }
+
+local function selectedVersion()
+    local version = g_game.getClientVersion()
+    if version == 0 then version = g_settings.getInteger('client-version') end
+    return version
+end
+
+local function exampleItems()
+    return selectedVersion() >= 1100 and PROTOBUF_ITEMS or CLASSIC_ITEMS
+end
+
+local function assetsHint()
+    if thingsLoaded() then return '' end
+    return g_rml.utf8(string.format('Sem assets carregados: coloque os arquivos do jogo em data/things/%d/ ' ..
+        'e clique em Carregar assets (ou entre no jogo).', selectedVersion()))
+end
+
 local function close()
     if window then
         window:destroy()
@@ -29,7 +53,7 @@ local function open()
 
     window = g_ui.createWidget('RmlWindow', rootWidget)
     window:setId('rmlDemoWindow')
-    window:setSize({ width = 560, height = 360 })
+    window:setSize({ width = 560, height = 430 })
     window.onEscape = close
 
     -- The model must exist before the document that references it (data-model="demo").
@@ -40,18 +64,24 @@ local function open()
         name = '',
         selected = 0,
         thingsLoaded = thingsLoaded(),
+        assetsHint = assetsHint(),
         backend = g_rml.getBackendName(),
-        items = {
-            { id = 3031, name = 'gold coin' }, { id = 3035, name = 'platinum coin' },
-            { id = 3043, name = 'crystal coin' }, { id = 2148, name = 'gold coin (8.6)' },
-            { id = 2152, name = 'platinum coin (8.6)' }, { id = 2160, name = 'crystal coin (8.6)' },
-        },
+        items = exampleItems(),
         Add = function(event, delta)
             model.count = model.count + delta
             model.progress = math.max(0, math.min(10, model.count))
         end,
         Select = function(event, id) model.selected = id end,
         Close = function() addEvent(close) end,
+        LoadAssets = function()
+            -- same path as the login screen: game_things loads data/things/<version>/ on version change
+            local version = selectedVersion()
+            if version == 0 then return end
+            addEvent(function()
+                g_game.setClientVersion(version)
+                g_game.setProtocolVersion(version)
+            end)
+        end,
         ToggleDebugger = function() window:setDebuggerVisible(not window:isDebuggerVisible()) end,
         Reload = function() addEvent(function() if window then window:reloadDocument() end end) end,
     })
@@ -59,7 +89,12 @@ local function open()
     window.onRmlUpdate = function()
         if model then
             local loaded = thingsLoaded()
-            if model.thingsLoaded ~= loaded then model.thingsLoaded = loaded end
+            if model.thingsLoaded ~= loaded then
+                model.thingsLoaded = loaded
+                model.items = exampleItems()
+            end
+            local hint = assetsHint()
+            if model.assetsHint ~= hint then model.assetsHint = hint end
             local backend = g_rml.getBackendName()
             if model.backend ~= backend then model.backend = backend end
         end

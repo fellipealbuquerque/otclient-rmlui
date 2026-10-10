@@ -31,7 +31,8 @@
           </div>
         </div>
         <p class="muted" data-if="selected > 0">Selecionado: {{selected}}</p>
-        <p class="muted" data-if="!thingsLoaded">Entre no jogo para as sprites aparecerem.</p>
+        <p class="muted" data-if="!thingsLoaded">{{assetsHint}}</p>
+        <button class="btn" data-if="!thingsLoaded" data-event-click="LoadAssets()">Carregar assets</button>
       </div>
     </section>
 
