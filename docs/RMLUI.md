@@ -9,9 +9,10 @@ um widget OTUI e convive com o resto da interface (ordem, recorte, foco, teclado
 
 | Módulo | Abrir | O que mostra |
 |---|---|---|
-| `client_rmlshowcase` | botão **RmlUi** no menu superior ou **Ctrl+Shift+U** | janela com abas: data binding, formulários, sprites, widgets OTUI dentro do RML (minimapa, item, criatura), efeitos de CSS, comparação OTUI para RmlUi, Lua e DOM |
+| `client_rmlshowcase` | botão **RmlUi** no menu superior ou **Ctrl+Shift+U** | janela com abas: data binding, formulários, sprites, widgets OTUI dentro do RML (minimapa, item, criatura), imagens (img, tint, decorator, nine-patch, spritesheet, carrossel), efeitos de CSS, comparação OTUI para RmlUi, Lua e DOM |
 | `client_rmloptions` | **Ctrl+Shift+O** ou pelo showcase | as opções do cliente refeitas em RmlUi (mesmas chaves de `client_options`) |
 | `game_rmloutfit` | **Ctrl+Shift+F** ou pelo showcase | outfit: preview girável, cores por parte, addons, looktypes; no jogo envia `changeOutfit` |
+| `game_rmlminimap` | **Ctrl+Shift+M** ou pelo showcase | minimapa: controles em RML (zoom, andares, ir para coordenada) com o `UIMinimap` nativo hospedado; fora do jogo carrega `data/things/<versão>/minimap.otmm` ou o `/minimap.otmm` salvo |
 | `client_rmldemo` | **Ctrl+Shift+R** | exemplo mínimo |
 
 Helpers Lua: **`modules/corelib/rml.lua`** (global `Rml`), escrito como documentação: tabela
@@ -28,15 +29,18 @@ Coloque os prints em `docs/images/rmlui/` com estes nomes:
 | `showcase-formularios.png` | aba Formulários |
 | `showcase-sprites.png` | aba Sprites (com assets carregados) |
 | `showcase-otui-no-rml.png` | aba OTUI no RML (minimapa no jogo) |
+| `showcase-imagens.png` | aba Imagens (carrossel) |
 | `showcase-efeitos.png` | aba Efeitos |
 | `showcase-otui-para-rmlui.png` | aba OTUI para RmlUi |
 | `opcoes.png` | janela de opções |
 | `outfit.png` | janela de outfit |
+| `minimapa.png` | janela de minimapa |
 
 ![Showcase](images/rmlui/showcase-inicio.png)
 ![Sprites](images/rmlui/showcase-sprites.png)
 ![Opções](images/rmlui/opcoes.png)
 ![Outfit](images/rmlui/outfit.png)
+![Minimapa](images/rmlui/minimapa.png)
 
 ## Build
 

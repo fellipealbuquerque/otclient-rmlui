@@ -124,6 +124,7 @@ local TABS = {
     { id = 'forms', label = 'Formulários' },
     { id = 'sprites', label = 'Sprites' },
     { id = 'native', label = 'OTUI no RML' },
+    { id = 'images', label = 'Imagens' },
     { id = 'effects', label = 'Efeitos' },
     { id = 'otui', label = 'OTUI para RmlUi' },
     { id = 'dom', label = 'Lua e DOM' },
@@ -162,6 +163,20 @@ local function spriteData()
     return items, bigItems
 end
 
+local SLIDE_WIDTH = 600
+
+local function carouselSlides()
+    local ids = exampleIds()
+    local look = { type = exampleLookType(), head = 78, body = 69, legs = 58, feet = 76 }
+    return {
+        { src = '/images/background.png', fit = 'cover', title = 'Fundo do cliente', text = 'arquivo de data/images, decorator: image(... cover)' },
+        { src = Rml.outfitImage(look, 2, 4), fit = 'contain', title = 'Outfit do jogo', text = Rml.outfitImage(look, 2, 4) },
+        { src = Rml.itemImage(ids[1] or 2160, 6), fit = 'contain', title = 'Item do jogo', text = Rml.itemImage(ids[1] or 2160, 6) },
+        { src = '/images/clienticon.png', fit = 'contain', title = 'Ícone do cliente', text = '1024x1024 reduzido com contain' },
+        { src = '/images/ui/background.png', fit = 'repeat', title = 'Textura repetida', text = 'decorator: image(... repeat)' },
+    }
+end
+
 local function translate(examples)
     local out = {}
     for _, ex in ipairs(examples) do
@@ -171,7 +186,15 @@ local function translate(examples)
 end
 
 local function createNativeWidgets(window)
-    Rml.host(window, 'minimap-slot', g_ui.createWidget('Minimap'))
+    local minimap = g_ui.createWidget('Minimap')
+    minimap:setZoom(1)
+    local player = g_game.isOnline() and g_game.getLocalPlayer()
+    minimap:setCameraPosition(player and player:getPosition() or { x = 1856, y = 1024, z = 7 })
+    minimap.onMouseRelease = function(self, pos, button)
+        if not g_game.isOnline() then return false end
+        return UIMinimap.onMouseRelease(self, pos, button)
+    end
+    Rml.host(window, 'minimap-slot', minimap)
 
     local item = g_ui.createWidget('Item')
     item:setVirtual(true)
@@ -192,6 +215,11 @@ end
 
 local function open()
     local model
+    local todos = {
+        { text = 'Ler modules/corelib/rml.lua', done = true },
+        { text = 'Criar meu primeiro .rml', done = false },
+        { text = 'Trocar uma janela OTUI por RmlUi', done = false },
+    }
     local items, bigItems = spriteData()
     local window
     window, model = Rml.createWindow{
@@ -213,11 +241,7 @@ local function open()
 
             -- data binding
             count = 0, meter = 0, name = '', nameLength = 0,
-            todos = {
-                { text = Rml.text('Ler modules/corelib/rml.lua'), done = true },
-                { text = Rml.text('Criar meu primeiro .rml'), done = false },
-                { text = Rml.text('Trocar uma janela OTUI por RmlUi'), done = false },
-            },
+            todos = todos,
             newTodo = '',
 
             -- formulários
@@ -232,16 +256,19 @@ local function open()
             outfitSrc = Rml.outfitImage({ type = exampleLookType(), head = 78, body = 69, legs = 58, feet = 76 }, 2, 3),
 
             examples = translate(OTUI_EXAMPLES),
+            flag = '/images/flags/pt.png',
+            slides = carouselSlides(), slide = 0, paused = false,
+            trackTransform = 'translateX(0dp)',
 
+            -- nested tables come back from the model as proxies: change the original
+            -- table, then assign it again so the document refreshes
             AddTodo = function()
                 if model.newTodo == '' then return end
-                local todos = model.todos
                 todos[#todos + 1] = { text = model.newTodo, done = false }
                 model.todos = todos
                 model.newTodo = ''
             end,
             Remove = function(_, index)
-                local todos = model.todos
                 table.remove(todos, index + 1)
                 model.todos = todos
             end,
@@ -252,6 +279,22 @@ local function open()
                     g_game.setProtocolVersion(version)
                 end)
             end,
+            Slide = function(_, delta)
+                model.slide = (model.slide + delta) % #carouselSlides()
+                model.trackTransform = string.format('translateX(%ddp)', -model.slide * SLIDE_WIDTH)
+            end,
+            GoSlide = function(_, index)
+                model.slide = index
+                model.trackTransform = string.format('translateX(%ddp)', -model.slide * SLIDE_WIDTH)
+            end,
+            NextFlag = function()
+                local flags = { 'pt', 'en', 'es', 'de', 'pl' }
+                local current = model.flag:match('flags/(%a+)%.png') or 'pt'
+                local index = 1
+                for i, f in ipairs(flags) do if f == current then index = i % #flags + 1 end end
+                model.flag = '/images/flags/' .. flags[index] .. '.png'
+            end,
+            OpenMinimap = function() if modules.game_rmlminimap then modules.game_rmlminimap.toggle() end end,
             OpenOptions = function() if modules.client_rmloptions then modules.client_rmloptions.toggle() end end,
             OpenOutfit = function() if modules.game_rmloutfit then modules.game_rmloutfit.toggle() end end,
             OpenDemo = function() if modules.client_rmldemo then modules.client_rmldemo.toggle() end end,
@@ -289,6 +332,13 @@ local function open()
     Rml.every(window, 600, function()
         model.direction = (model.direction + 1) % 4
         model.outfitSrc = Rml.outfitImage({ type = exampleLookType(), head = 78, body = 69, legs = 58, feet = 76 }, model.direction, 3)
+    end)
+
+    -- carrossel: avança sozinho, exceto com o mouse em cima ou fora da aba
+    Rml.every(window, 3000, function()
+        if model.tab ~= 'images' or model.paused then return end
+        model.slide = (model.slide + 1) % #carouselSlides()
+        model.trackTransform = string.format('translateX(%ddp)', -model.slide * SLIDE_WIDTH)
     end)
 
     Rml.on(window, 'mouse-pad', 'mousemove', function(event)

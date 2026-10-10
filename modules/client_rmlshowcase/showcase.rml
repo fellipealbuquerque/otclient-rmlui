@@ -31,6 +31,7 @@
             <div class="buttons">
               <button class="btn primary" data-event-click="OpenOptions()">Opções</button>
               <button class="btn primary" data-event-click="OpenOutfit()">Outfit</button>
+              <button class="btn primary" data-event-click="OpenMinimap()">Minimapa</button>
               <button class="btn" data-event-click="OpenDemo()">Demo simples</button>
             </div>
           </div>
@@ -156,6 +157,64 @@
               <div id="creature-slot" class="host-slot creature-slot"></div>
             </div>
             <p class="muted">São os mesmos widgets dos .otui (animados, com tooltip e arrastar).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Imagens -->
+      <section data-if="tab == 'images'">
+        <h2>Imagens</h2>
+        <div class="card">
+          <h3>Carrossel</h3>
+          <div class="carousel" data-event-mouseover="paused = true" data-event-mouseout="paused = false">
+            <div class="carousel-track" data-style-transform="trackTransform">
+              <div class="slide" data-for="sl : slides">
+                <div class="slide-image" data-style-decorator="'image(' + sl.src + ' ' + sl.fit + ')'"></div>
+                <div class="slide-caption"><b>{{sl.title}}</b><span class="muted"> {{sl.text}}</span></div>
+              </div>
+            </div>
+            <button class="carousel-nav prev" data-event-click="Slide(-1)">&lt;</button>
+            <button class="carousel-nav next" data-event-click="Slide(1)">&gt;</button>
+          </div>
+          <div class="dots">
+            <div class="dot" data-for="sl, i : slides" data-class-selected="i == slide" data-event-click="GoSlide(i)"></div>
+          </div>
+          <p class="muted">Avança sozinho a cada 3 s pelo Lua (Rml.every) e pausa com o mouse em cima.</p>
+        </div>
+        <div class="row">
+          <div class="card col">
+            <h3>&lt;img&gt; de arquivos do cliente</h3>
+            <img class="logo" src="/images/clienticon.png"/>
+            <img class="icon" src="/images/topbuttons/hotkeys.png"/>
+            <img class="icon" src="/images/topbuttons/options.png"/>
+            <img class="icon" src="/images/topbuttons/audio.png"/>
+            <h3>Tint com image-color</h3>
+            <img class="icon tint-red" src="/images/topbuttons/healthinfo.png"/>
+            <img class="icon tint-green" src="/images/topbuttons/healthinfo.png"/>
+            <img class="icon tint-blue" src="/images/topbuttons/healthinfo.png"/>
+          </div>
+          <div class="card col">
+            <h3>Trocada pelo Lua (data-attr-src)</h3>
+            <img class="flag" data-attr-src="flag"/>
+            <div class="buttons"><button class="btn" data-event-click="NextFlag()">Próxima bandeira</button></div>
+            <h3>Sprite de um spritesheet</h3>
+            <img sprite="btn-idle"/> <img sprite="btn-pressed"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="card col">
+            <h3>decorator: image(...)</h3>
+            <div class="img-modes">
+              <div class="img-box bg-cover"><span>cover</span></div>
+              <div class="img-box bg-contain"><span>contain</span></div>
+              <div class="img-box bg-repeat"><span>repeat</span></div>
+            </div>
+          </div>
+          <div class="card col">
+            <h3>Nine-patch (borda fixa, miolo estica)</h3>
+            <div class="np np-small">curto</div>
+            <div class="np np-mid">médio</div>
+            <div class="np np-wide">bem mais largo</div>
           </div>
         </div>
       </section>

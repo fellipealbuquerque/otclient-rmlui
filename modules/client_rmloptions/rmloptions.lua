@@ -91,11 +91,12 @@ local function buildSections()
     for _, section in ipairs(SECTIONS) do
         local list = {}
         for _, opt in ipairs(section.options) do
-            local copy = {}
+            -- every option exposes every field the document reads (min/max/step/suffix/choices)
+            local copy = { min = 0, max = 0, step = 1, suffix = '', choices = {} }
             for k, v in pairs(opt) do copy[k] = v end
             copy.label = Rml.text(opt.label)
             copy.value = readValue(opt)
-            if copy.choices then
+            if opt.choices then
                 copy.choices = {}
                 for _, c in ipairs(opt.choices) do copy.choices[#copy.choices + 1] = { value = c.value, label = Rml.text(c.label) } end
             end
@@ -108,6 +109,8 @@ end
 
 local function open()
     local window, model
+    -- the data model hands nested tables back as proxies; read the user's changes from this table
+    local sections = buildSections()
     window, model = Rml.createWindow{
         id = 'rmlOptions',
         document = '/modules/client_rmloptions/rmloptions.rml',
@@ -116,7 +119,7 @@ local function open()
         height = 470,
         data = {
             tab = 'graphics',
-            sections = buildSections(),
+            sections = sections,
             status = '',
             OpenClassic = function() options().show() end,
         },
@@ -124,14 +127,24 @@ local function open()
     }
     if not window then return nil end
 
-    -- aplica cada mudança feita no documento com setOption (o mesmo caminho da janela OTUI)
-    local applied = {}
-    for _, section in ipairs(model.sections) do
-        for _, opt in ipairs(section.options) do applied[opt.key] = normalize(opt, opt.value) end
-    end
+    -- aplica cada mudança feita no documento com setOption (o mesmo caminho da janela OTUI).
+    -- Nos primeiros quadros os sliders ainda não têm min/max e cortam o valor: esses quadros
+    -- só ressincronizam com as opções reais, nada é gravado.
+    local applied, warmup = {}, 3
     connect(window, {
         onRmlUpdate = function()
-            for _, section in ipairs(model.sections) do
+            if warmup > 0 then
+                warmup = warmup - 1
+                for _, section in ipairs(sections) do
+                    for _, opt in ipairs(section.options) do
+                        opt.value = readValue(opt)
+                        applied[opt.key] = normalize(opt, opt.value)
+                    end
+                end
+                model.sections = sections
+                return
+            end
+            for _, section in ipairs(sections) do
                 for _, opt in ipairs(section.options) do
                     local value = normalize(opt, opt.value)
                     if value ~= applied[opt.key] then
