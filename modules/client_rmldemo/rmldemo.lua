@@ -1,7 +1,6 @@
--- RmlUi demo: a free RmlWindow driven by a Lua data model.
--- Open with Ctrl+Shift+R or the top menu button.
+-- RmlUi demo (Ctrl+Shift+R): a free RmlWindow driven by a Lua data model.
 
-local window, model, button
+local window, model
 
 local function thingsLoaded()
     return g_things and g_things.isDatLoaded and g_things.isDatLoaded() or false
@@ -29,7 +28,6 @@ local function defaultIds()
     return table.concat(list, ', ')
 end
 
--- ids typed in the window are remembered between sessions
 local function savedIds()
     local text = g_settings.getString('rmldemo-items')
     return text ~= '' and text or defaultIds()
@@ -150,17 +148,9 @@ end
 
 function init()
     g_keyboard.bindKeyDown('Ctrl+Shift+R', toggle)
-    if modules.client_topmenu then
-        button = modules.client_topmenu.addLeftButton('rmlDemoButton', tr('RmlUi demo') .. ' (Ctrl+Shift+R)',
-            '/images/topbuttons/debug', toggle)
-    end
 end
 
 function terminate()
     g_keyboard.unbindKeyDown('Ctrl+Shift+R')
     close()
-    if button then
-        button:destroy()
-        button = nil
-    end
 end

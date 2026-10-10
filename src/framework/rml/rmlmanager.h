@@ -80,7 +80,6 @@ public:
     // RmlUi itself is not thread safe: every call into it goes through this lock.
     std::recursive_mutex& mutex() { return m_mutex; }
 
-    // internal
     void registerWidget(UIRmlWidget* widget);
     void unregisterWidget(UIRmlWidget* widget);
     void retireRenderer(const std::shared_ptr<RmlRenderer>& renderer);
@@ -101,8 +100,8 @@ private:
     ImageProvider m_imageProvider;
     std::function<bool()> m_assetsReady;
     bool m_lastAssetsReady{ false };
-    std::set<std::string> m_virtualSources;            // every virtual image handed to RmlUi
-    std::unordered_map<std::string, int> m_pendingImages; // failed ones -> attempts so far
+    std::set<std::string> m_virtualSources;
+    std::unordered_map<std::string, int> m_pendingImages;
     int m_ticks{ 0 };
     ScheduledEventPtr m_tickEvent;
 

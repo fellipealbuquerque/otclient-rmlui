@@ -115,9 +115,9 @@ private:
     struct Command
     {
         Op op;
-        uintptr_t a{ 0 }; // result / primary handle
-        uintptr_t b{ 0 }; // secondary handle
-        uintptr_t c{ 0 }; // texture handle
+        uintptr_t a{ 0 };
+        uintptr_t b{ 0 };
+        uintptr_t c{ 0 };
         bool flag{ false };
         int mode{ 0 };
         Rml::Vector2f translation;
@@ -138,7 +138,6 @@ private:
     uintptr_t resolve(uintptr_t proxy) const;
     void execute(Command& cmd);
 
-    // UI thread
     uintptr_t m_lastHandle{ 0 };
     bool m_inFrame{ false };
     bool m_retired{ false };
@@ -147,7 +146,6 @@ private:
     std::mutex m_queueMutex;
     std::vector<Command> m_queue;
 
-    // graphics thread
     std::unique_ptr<RenderInterface_GL3> m_gl;
     bool m_glFailed{ false };
     bool m_advancedEffects{ false };

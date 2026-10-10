@@ -49,9 +49,6 @@ void RmlTargetTexture::realize()
 RmlRenderer::RmlRenderer() = default;
 RmlRenderer::~RmlRenderer() = default;
 
-// ---------------------------------------------------------------------------------------------
-// UI thread: recording
-
 RmlRenderer::Command& RmlRenderer::record(const Op op)
 {
     if (m_inFrame)
@@ -290,13 +287,10 @@ void RmlRenderer::ReleaseShader(const Rml::CompiledShaderHandle shader)
     record(Op::ReleaseShader).a = shader;
 }
 
-// ---------------------------------------------------------------------------------------------
-// graphics thread: replay
-
 uintptr_t RmlRenderer::resolve(const uintptr_t proxy) const
 {
     if (proxy == 0)
-        return 0; // "no texture" / base layer
+        return 0;
     const auto it = m_handles.find(proxy);
     return it != m_handles.end() ? it->second : 0;
 }
@@ -366,7 +360,7 @@ void RmlRenderer::execute(Command& cmd)
                 if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
                     g_logger.warning("[rmlui] widget framebuffer is incomplete");
                 m_attachedTarget = target;
-                m_target = cmd.target; // keep the attached texture alive
+                m_target = cmd.target;
             }
 
             gl.SetViewport(target->getWidth(), target->getHeight());
@@ -476,7 +470,7 @@ void RmlRenderer::releaseGl()
 {
     // graphics thread, after retire(): apply the final releases recorded by RmlUi, then free GL.
     replay();
-    m_glFailed = true; // never recreate the backend for this renderer
+    m_glFailed = true;
 
     if (!g_graphics.ok())
         return;

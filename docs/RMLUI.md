@@ -5,7 +5,38 @@ API usada pelo cliente do Ninja World Online (`g_rml`, `UIRmlWidget`, `RmlWindow
 imagens `item/`/`outfit/`, tema `efeitos`). Um documento `.rml` + `.rcss` é desenhado dentro de
 um widget OTUI e convive com o resto da interface (ordem, recorte, foco, teclado e mouse).
 
-Demonstração: módulo `modules/client_rmldemo`. Abra pelo botão no menu superior ou com **Ctrl+Shift+R**.
+## Exemplos
+
+| Módulo | Abrir | O que mostra |
+|---|---|---|
+| `client_rmlshowcase` | botão **RmlUi** no menu superior ou **Ctrl+Shift+U** | janela com abas: data binding, formulários, sprites, widgets OTUI dentro do RML (minimapa, item, criatura), efeitos de CSS, comparação OTUI para RmlUi, Lua e DOM |
+| `client_rmloptions` | **Ctrl+Shift+O** ou pelo showcase | as opções do cliente refeitas em RmlUi (mesmas chaves de `client_options`) |
+| `game_rmloutfit` | **Ctrl+Shift+F** ou pelo showcase | outfit: preview girável, cores por parte, addons, looktypes; no jogo envia `changeOutfit` |
+| `client_rmldemo` | **Ctrl+Shift+R** | exemplo mínimo |
+
+Helpers Lua: **`modules/corelib/rml.lua`** (global `Rml`), escrito como documentação: tabela
+OTUI × RmlUi, data model, texto, imagens, DOM, `Rml.host` e `Rml.watch`. Os exemplos usam só ele.
+
+### Capturas
+
+Coloque os prints em `docs/images/rmlui/` com estes nomes:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `showcase-inicio.png` | showcase, aba Início |
+| `showcase-binding.png` | aba Data binding |
+| `showcase-formularios.png` | aba Formulários |
+| `showcase-sprites.png` | aba Sprites (com assets carregados) |
+| `showcase-otui-no-rml.png` | aba OTUI no RML (minimapa no jogo) |
+| `showcase-efeitos.png` | aba Efeitos |
+| `showcase-otui-para-rmlui.png` | aba OTUI para RmlUi |
+| `opcoes.png` | janela de opções |
+| `outfit.png` | janela de outfit |
+
+![Showcase](images/rmlui/showcase-inicio.png)
+![Sprites](images/rmlui/showcase-sprites.png)
+![Opções](images/rmlui/opcoes.png)
+![Outfit](images/rmlui/outfit.png)
 
 ## Build
 
@@ -103,6 +134,11 @@ A API DOM completa é a do [plugin Lua oficial do RmlUi](https://mikke89.github.
   assets protobuf (12.x+). Pedida antes de os assets carregarem, a imagem fica transparente e é
   recarregada sozinha quando eles ficam prontos; sprites ocupadas são tentadas de novo. Dê
   `width`/`height` ao `<img>` no RCSS para o tamanho não depender da imagem carregada.
+  Sufixo `@2x`..`@8x` amplia sem borrar: `item/2160@3x.png`.
+- Widgets OTUI nativos dentro do documento: reserve o espaço com um elemento e chame
+  `Rml.host(janela, 'idDoElemento', g_ui.createWidget('Minimap'))`.
+- `.dat/.spr` salvos pelo Object Builder: deixe o `Tibia.otfi` ao lado; o `game_things` lê as
+  opções dele (transparency, extended, frame groups).
 - Tema `efeitos`, ativo quando o backend completo existe:
   `@media (theme: efeitos) { .x { box-shadow: ...; decorator: linear-gradient(...); filter: blur(2dp); } }`.
 - Campos de texto (`<input type="text">`, `<textarea>`) seguram o teclado: digitar não dispara

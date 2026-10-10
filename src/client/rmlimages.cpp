@@ -67,7 +67,6 @@ namespace
                 * type->getNumPatternX() + x) * type->getLayers() + l;
     }
 
-    // Draws one layer of a thing (all its tiles) into a new image.
     ImagePtr drawLayer(const ThingTypePtr& type, const int layer, const int x, const int y, const int z)
     {
         const int spriteSize = g_gameConfig.getSpriteSize();
@@ -94,7 +93,6 @@ namespace
                 if (index >= sprites.size())
                     continue;
                 if (const auto sprite = spriteImage(sprites[index])) {
-                    // tiles grow to the top-left, like ThingType drawing
                     image->blit(Point(spriteSize * (type->getWidth() - w - 1), spriteSize * (type->getHeight() - h - 1)), sprite);
                 }
             }
@@ -152,7 +150,6 @@ namespace
         return image;
     }
 
-    // outfit/<looktype>-<head>-<body>-<legs>-<feet>-<addons>-<direction>.png
     ImagePtr outfitImage(const std::vector<int>& args)
     {
         const auto arg = [&](const size_t i, const int fallback) { return i < args.size() ? args[i] : fallback; };

@@ -252,7 +252,6 @@ bool UIRmlWidget::reloadDocument()
     const std::string path = m_documentPath;
     {
         std::scoped_lock lock(g_rml.mutex());
-        // drop cached stylesheets/templates so edits on disk are picked up
         Rml::Factory::ClearStyleSheetCache();
         Rml::Factory::ClearTemplateCache();
     }
@@ -468,7 +467,6 @@ bool UIRmlWidget::onMouseWheel(const Point& mousePos, const Fw::MouseWheelDirect
 
 bool UIRmlWidget::onKeyText(const std::string_view keyText)
 {
-    // control characters (Ctrl+Backspace) are handled as key presses
     if (m_context && !keyText.empty() && static_cast<uint8_t>(keyText.front()) >= 32 && static_cast<uint8_t>(keyText.front()) != Fw::KeyDel) {
         std::scoped_lock lock(g_rml.mutex());
         if (auto* focus = m_context->GetFocusElement()) {

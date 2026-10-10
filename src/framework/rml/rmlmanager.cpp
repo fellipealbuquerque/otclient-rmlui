@@ -42,6 +42,12 @@ RmlManager g_rml;
 
 namespace
 {
+    // RmlUi resolves "/styles/x.rcss" to "styles/x.rcss"; g_resources wants the leading slash
+    std::string resourcePath(const std::string& path)
+    {
+        return !path.empty() && path.front() != '/' ? '/' + path : path;
+    }
+
     class OtSystemInterface final : public Rml::SystemInterface
     {
     public:
@@ -82,8 +88,9 @@ namespace
         };
 
     public:
-        Rml::FileHandle Open(const Rml::String& path) override
+        Rml::FileHandle Open(const Rml::String& rmlPath) override
         {
+            const auto path = resourcePath(rmlPath);
             try {
                 if (!g_resources.fileExists(path))
                     return 0;
@@ -124,8 +131,9 @@ namespace
         size_t Tell(const Rml::FileHandle handle) override { return reinterpret_cast<File*>(handle)->position; }
         size_t Length(const Rml::FileHandle handle) override { return reinterpret_cast<File*>(handle)->data.size(); }
 
-        bool LoadFile(const Rml::String& path, Rml::String& out_data) override
+        bool LoadFile(const Rml::String& rmlPath, Rml::String& out_data) override
         {
+            const auto path = resourcePath(rmlPath);
             try {
                 if (!g_resources.fileExists(path))
                     return false;
@@ -185,7 +193,6 @@ void RmlManager::terminate()
         m_tickEvent = nullptr;
     }
 
-    // widgets were destroyed by g_ui.terminate(); anything left goes down with the library
     for (auto* widget : std::vector(m_widgets))
         widget->unloadDocument();
 
@@ -318,7 +325,6 @@ void RmlManager::tick()
         }
     }
 
-    // sprites that were busy/unavailable get a few more chances (about once per second)
     if (++m_ticks % 60 == 0)
         retryPendingImages();
 
@@ -349,13 +355,33 @@ void RmlManager::retryPendingImages()
     }
 }
 
+namespace
+{
+    ImagePtr scaleNearest(const ImagePtr& image, const int factor)
+    {
+        const auto& size = image->getSize();
+        const int bpp = image->getBpp();
+        auto scaled = std::make_shared<Image>(size * factor, bpp);
+        const auto& in = image->getPixels();
+        auto& out = scaled->getPixels();
+        const int outWidth = size.width() * factor;
+        for (int y = 0; y < size.height() * factor; ++y) {
+            for (int x = 0; x < outWidth; ++x) {
+                const auto* src = &in[(static_cast<size_t>(y / factor) * size.width() + x / factor) * bpp];
+                std::copy_n(src, bpp, &out[(static_cast<size_t>(y) * outWidth + x) * bpp]);
+            }
+        }
+        return scaled;
+    }
+}
+
 ImagePtr RmlManager::loadImage(const std::string& source)
 {
-    // virtual images rendered from the game sprites
-    static const std::regex virtualImage(R"((?:^|/)(item|effect|outfit)/(\d+(?:-\d+)*)\.png$)");
+    // optional @2x..@8x: nearest-neighbour upscale, keeps pixel art sharp
+    static const std::regex virtualImage(R"((?:^|/)(item|effect|outfit)/(\d+(?:-\d+)*)(?:@([2-8])x)?\.png$)");
     std::smatch match;
     if (!std::regex_search(source, match, virtualImage))
-        return Image::load(source);
+        return Image::load(resourcePath(source));
 
     std::scoped_lock lock(m_mutex);
     m_virtualSources.insert(source);
@@ -371,6 +397,8 @@ ImagePtr RmlManager::loadImage(const std::string& source)
 
     if (image) {
         m_pendingImages.erase(source);
+        if (match[3].matched)
+            image = scaleNearest(image, std::stoi(match[3].str()));
         return image;
     }
 
