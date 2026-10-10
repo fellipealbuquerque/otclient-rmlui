@@ -93,6 +93,15 @@ elseif(WASM)
   set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DOPENGL_ES=2)
 endif()
 
+# RmlUi: HTML/CSS documents hosted by UIRmlWidget (desktop OpenGL only)
+option(TOGGLE_RMLUI "Enable RmlUi (UIRmlWidget, g_rml)" ON)
+if (TOGGLE_RMLUI AND TOGGLE_FRAMEWORK_GRAPHICS AND NOT ANDROID AND NOT WASM)
+  set(OTCLIENT_RMLUI ON)
+  set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_RMLUI)
+else()
+  set(OTCLIENT_RMLUI OFF)
+endif()
+
 set(VERSION "1.0.0")
 
 # *****************************************************************************
@@ -323,6 +332,33 @@ else()
 endif()
 
 # *****************************************************************************
+# RmlUi (fetched; built static, with its Lua plugin on top of our LuaJIT)
+# *****************************************************************************
+if(OTCLIENT_RMLUI)
+  include(FetchContent)
+  if(NOT TARGET LuaJIT::LuaJIT)
+    add_library(LuaJIT::LuaJIT INTERFACE IMPORTED)
+    set_target_properties(LuaJIT::LuaJIT PROPERTIES
+      INTERFACE_LINK_LIBRARIES "${LUAJIT_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${LUAJIT_INCLUDE_DIR}")
+  endif()
+  set(RMLUI_LUA_BINDINGS ON CACHE BOOL "" FORCE)
+  set(RMLUI_LUA_BINDINGS_LIBRARY "luajit" CACHE STRING "" FORCE)
+  set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
+  set(RMLUI_FONT_ENGINE "freetype" CACHE STRING "" FORCE)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  if(MSVC AND BUILD_STATIC_LIBRARY)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
+  FetchContent_Declare(rmlui
+    GIT_REPOSITORY https://github.com/mikke89/RmlUi.git
+    GIT_TAG 6.3
+    GIT_SHALLOW TRUE)
+  FetchContent_MakeAvailable(rmlui)
+  log_option_enabled("RMLUI")
+endif()
+
+# *****************************************************************************
 # OTClient source files configuration
 # *****************************************************************************
 set(SOURCE_FILES
@@ -398,6 +434,7 @@ set(SOURCE_FILES
         client/attachedeffect.cpp
         client/attachedeffectmanager.cpp
         client/client.cpp
+        client/rmlimages.cpp
         client/container.cpp
         client/creature.cpp
         client/creatures.cpp
@@ -554,9 +591,25 @@ elseif(UNIX AND NOT ANDROID AND NOT WASM)
   set(SOURCE_FILES ${SOURCE_FILES} framework/platform/x11window.cpp)
 endif()
 
+if(OTCLIENT_RMLUI)
+  set(SOURCE_FILES ${SOURCE_FILES}
+          framework/rml/rmlmanager.cpp
+          framework/rml/rmlrenderer.cpp
+          framework/rml/uirmlwidget.cpp
+          framework/rml/RmlUi_Renderer_GL3.cpp
+  )
+  # vendored RmlUi backend: keep it out of the PCH/unity build
+  set_source_files_properties(framework/rml/RmlUi_Renderer_GL3.cpp PROPERTIES
+    SKIP_PRECOMPILE_HEADERS ON
+    SKIP_UNITY_BUILD_INCLUSION ON)
+endif()
+
 add_library(otclient_core STATIC ${SOURCE_FILES})
 
 target_link_libraries(otclient_core PRIVATE unofficial::inih::inireader)
+if(OTCLIENT_RMLUI)
+  target_link_libraries(otclient_core PUBLIC RmlUi::RmlUi)
+endif()
 
 if(NOT MSVC AND CMAKE_INTERPROCEDURAL_OPTIMIZATION MATCHES "^(ON|1|TRUE)$")
   target_link_options(otclient_core PUBLIC -flto=auto)

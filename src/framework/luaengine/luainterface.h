@@ -366,6 +366,9 @@ public:
 
     int getTop() const;
     int stackSize() const { return getTop(); }
+
+    // raw state, for libraries with their own Lua bindings (RmlUi)
+    lua_State* getLuaState() const { return L; }
     void clearStack() { pop(stackSize()); }
     bool hasIndex(const int index) { return (stackSize() >= (index < 0 ? -index : index) && index != 0); }
 

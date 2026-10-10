@@ -36,7 +36,8 @@ enum class CompositionMode
     ADD,
     REPLACE,
     DESTINATION_BLENDING,
-    LIGHT
+    LIGHT,
+    PREMULTIPLIED // source colors already multiplied by alpha (RmlUi output)
 };
 
 enum class DrawMode

@@ -23,6 +23,9 @@
 #include "graphicalapplication.h"
 
 #include "asyncdispatcher.h"
+#ifdef FRAMEWORK_RMLUI
+#include <framework/rml/rmlmanager.h>
+#endif
 #include "clock.h"
 #include "eventdispatcher.h"
 #include "framework/graphics/declarations.h"
@@ -112,6 +115,9 @@ void GraphicalApplication::terminate()
     // destroy any remaining widget
     g_html.terminate();
     g_ui.terminate();
+#ifdef FRAMEWORK_RMLUI
+    g_rml.terminate();
+#endif
 
     Application::terminate();
     m_terminated = false;

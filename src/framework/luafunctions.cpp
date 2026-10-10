@@ -46,6 +46,19 @@
 #include "framework/input/mouse.h"
 #include "framework/platform/platformwindow.h"
 #include "framework/ui/ui.h"
+#ifdef FRAMEWORK_RMLUI
+#include "framework/rml/rmlmanager.h"
+#include "framework/rml/uirmlwidget.h"
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Lua/LuaType.h>
+namespace Rml::Lua
+{
+    // declared privately by the RmlUi Lua plugin; repeated here to push its objects
+    RMLUI_LUATYPE_DECLARE(Rml::Context)
+    RMLUI_LUATYPE_DECLARE(Rml::ElementDocument)
+}
+#endif
 #endif
 
 #ifdef FRAMEWORK_SOUND
@@ -998,6 +1011,53 @@ void Application::registerLuaFunctions()
     g_lua.bindClassMemberFunction<UIQrCode>("getCodeBorder", &UIQrCode::getCodeBorder);
     g_lua.bindClassMemberFunction<UIQrCode>("setCode", &UIQrCode::setCode);
     g_lua.bindClassMemberFunction<UIQrCode>("setCodeBorder", &UIQrCode::setCodeBorder);
+
+#ifdef FRAMEWORK_RMLUI
+    // RmlUi (HTML/CSS documents inside OTUI), same API as Ninja World Online's client
+    g_lua.registerSingletonClass("g_rml");
+    g_lua.bindSingletonFunction("g_rml", "isReady", &RmlManager::isReady, &g_rml);
+    g_lua.bindSingletonFunction("g_rml", "supportsAdvancedEffects", &RmlManager::supportsAdvancedEffects, &g_rml);
+    g_lua.bindSingletonFunction("g_rml", "getBackendName", &RmlManager::getBackendName, &g_rml);
+    g_lua.bindSingletonFunction("g_rml", "setReportEnabled", &RmlManager::setReportEnabled, &g_rml);
+    g_lua.bindSingletonFunction("g_rml", "isReportEnabled", &RmlManager::isReportEnabled, &g_rml);
+    g_lua.bindSingletonFunction("g_rml", "loadFontFace", &RmlManager::loadFontFace, &g_rml);
+    g_lua.bindClassStaticFunction("g_rml", "utf8", [](const std::string& text) { return RmlManager::utf8(text); });
+    g_lua.bindClassStaticFunction("g_rml", "latin1", [](const std::string& text) { return RmlManager::latin1(text); });
+    g_lua.bindSingletonFunction("g_rml", "getWidgetCount", &RmlManager::getWidgetCount, &g_rml);
+    g_lua.bindSingletonFunction("g_rml", "getWidgets", &RmlManager::getWidgets, &g_rml);
+
+    g_lua.registerClass<UIRmlWidget, UIWidget>();
+    g_lua.bindClassStaticFunction<UIRmlWidget>("create", [] { return std::make_shared<UIRmlWidget>(); });
+    g_lua.bindClassMemberFunction<UIRmlWidget>("loadDocument", &UIRmlWidget::loadDocument);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("unloadDocument", &UIRmlWidget::unloadDocument);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("reloadDocument", &UIRmlWidget::reloadDocument);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("hasDocument", &UIRmlWidget::hasDocument);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("getDocumentPath", &UIRmlWidget::getDocumentPath);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("setDebuggerVisible", &UIRmlWidget::setDebuggerVisible);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("isDebuggerVisible", &UIRmlWidget::isDebuggerVisible);
+    g_lua.bindClassMemberFunction<UIRmlWidget>("setExtraStyleSheet", &UIRmlWidget::setExtraStyleSheet);
+    // these return objects of the RmlUi Lua plugin (Document / Context)
+    g_lua.registerClassMemberFunction<UIRmlWidget>("getDocument", [](LuaInterface* lua) -> int {
+        const auto widget = std::dynamic_pointer_cast<UIRmlWidget>(lua->popObject());
+        auto* document = widget ? widget->getDocument() : nullptr;
+        if (!document) {
+            lua->pushNil();
+            return 1;
+        }
+        Rml::Lua::LuaType<Rml::ElementDocument>::push(lua->getLuaState(), document, false);
+        return 1;
+    });
+    g_lua.registerClassMemberFunction<UIRmlWidget>("getContext", [](LuaInterface* lua) -> int {
+        const auto widget = std::dynamic_pointer_cast<UIRmlWidget>(lua->popObject());
+        auto* context = widget ? widget->getContext() : nullptr;
+        if (!context) {
+            lua->pushNil();
+            return 1;
+        }
+        Rml::Lua::LuaType<Rml::Context>::push(lua->getLuaState(), context, false);
+        return 1;
+    });
+#endif
 
     // Shader
     g_lua.registerClass<ShaderProgram>();

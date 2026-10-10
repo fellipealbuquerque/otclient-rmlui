@@ -280,6 +280,9 @@ void Painter::updateGlCompositionMode() const
         case CompositionMode::LIGHT:
             glBlendFunc(GL_ZERO, GL_SRC_COLOR);
             break;
+        case CompositionMode::PREMULTIPLIED:
+            glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            break;
     }
 }
 

@@ -1,0 +1,55 @@
+<rml>
+<head>
+  <title>RmlUi demo</title>
+  <link type="text/rcss" href="rmldemo.rcss"/>
+</head>
+<body>
+  <div class="window" data-model="demo">
+    <header data-drag="window">
+      <span class="title">{{title}}</span>
+      <button class="close" data-drag="none" data-event-click="Close()">&#215;</button>
+    </header>
+
+    <section class="row">
+      <div class="card">
+        <h2>Data binding</h2>
+        <p>Cliques: <strong>{{count}}</strong></p>
+        <div class="buttons">
+          <button class="btn" data-event-click="Add(-1)">-1</button>
+          <button class="btn primary" data-event-click="Add(1)">+1</button>
+        </div>
+        <input type="text" class="text" data-value="name" maxlength="24"/>
+        <p class="muted">Olá, <span data-class-empty="name == ''">{{name == '' ? 'visitante' : name}}</span>!</p>
+      </div>
+
+      <div class="card">
+        <h2>Itens (sprites)</h2>
+        <div class="items">
+          <div class="slot" data-for="item : items" data-class-selected="item.id == selected"
+               data-event-click="Select(item.id)" data-attr-title="item.name">
+            <img data-attr-src="'item/' + item.id + '.png'"/>
+          </div>
+        </div>
+        <p class="muted" data-if="selected > 0">Selecionado: {{selected}}</p>
+        <p class="muted" data-if="!thingsLoaded">Entre no jogo para as sprites aparecerem.</p>
+      </div>
+    </section>
+
+    <section class="row">
+      <div class="card effects">
+        <h2>Efeitos</h2>
+        <div class="glow">gradiente + sombra</div>
+        <p class="muted">Backend: {{backend}}</p>
+      </div>
+      <div class="card">
+        <h2>Ferramentas</h2>
+        <div class="buttons">
+          <button class="btn" data-event-click="ToggleDebugger()">Debugger</button>
+          <button class="btn" data-event-click="Reload()">Recarregar</button>
+        </div>
+        <progress class="bar" data-attr-value="progress" max="10"/>
+      </div>
+    </section>
+  </div>
+</body>
+</rml>

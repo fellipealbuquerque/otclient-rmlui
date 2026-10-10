@@ -20,6 +20,9 @@
  * THE SOFTWARE.
  */
 
+#ifdef FRAMEWORK_RMLUI
+#include "rmlimages.h"
+#endif
 #include "client.h"
 
 #include "game.h"
@@ -60,6 +63,10 @@ void Client::init(std::vector<std::string>& /*args*/)
     g_sprites.init();
     g_spriteAppearances.init();
     g_things.init();
+
+#ifdef FRAMEWORK_RMLUI
+    registerRmlImageProvider();
+#endif
 }
 
 void Client::terminate()
