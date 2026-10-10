@@ -21,8 +21,36 @@ local function selectedVersion()
     return version
 end
 
+local function defaultIds()
+    local list = {}
+    for _, item in ipairs(selectedVersion() >= 1100 and PROTOBUF_ITEMS or CLASSIC_ITEMS) do
+        list[#list + 1] = tostring(item.id)
+    end
+    return table.concat(list, ', ')
+end
+
+-- ids typed in the window are remembered between sessions
+local function savedIds()
+    local text = g_settings.getString('rmldemo-items')
+    return text ~= '' and text or defaultIds()
+end
+
+local function savedLookType()
+    local text = g_settings.getString('rmldemo-looktype')
+    return text ~= '' and text or (selectedVersion() >= 1100 and '128' or '128')
+end
+
+local function parseIds(text)
+    local items = {}
+    for id in text:gmatch('%d+') do
+        items[#items + 1] = { id = tonumber(id), name = 'id ' .. id }
+        if #items >= 12 then break end
+    end
+    return items
+end
+
 local function exampleItems()
-    return selectedVersion() >= 1100 and PROTOBUF_ITEMS or CLASSIC_ITEMS
+    return parseIds(savedIds())
 end
 
 local function assetsHint()
@@ -53,7 +81,7 @@ local function open()
 
     window = g_ui.createWidget('RmlWindow', rootWidget)
     window:setId('rmlDemoWindow')
-    window:setSize({ width = 560, height = 430 })
+    window:setSize({ width = 600, height = 500 })
     window.onEscape = close
 
     -- The model must exist before the document that references it (data-model="demo").
@@ -67,6 +95,15 @@ local function open()
         assetsHint = assetsHint(),
         backend = g_rml.getBackendName(),
         items = exampleItems(),
+        idsText = savedIds(),
+        lookTypeText = savedLookType(),
+        lookType = savedLookType(),
+        ApplyIds = function()
+            g_settings.set('rmldemo-items', model.idsText)
+            g_settings.set('rmldemo-looktype', model.lookTypeText)
+            model.items = parseIds(model.idsText)
+            model.lookType = model.lookTypeText:match('%d+') or ''
+        end,
         Add = function(event, delta)
             model.count = model.count + delta
             model.progress = math.max(0, math.min(10, model.count))
